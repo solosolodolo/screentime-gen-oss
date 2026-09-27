@@ -1,141 +1,69 @@
+const startScreen = document.getElementById('start-screen');
+const startTitle = document.getElementById('start-title');
+const startButton = document.getElementById('start-button');
+const decodeStartButton = document.getElementById('decode-start-button');
 
-// NODE built-in module
-const readline = require('readline');
-const fs = require("fs").promises;
+const passwordScreen = document.getElementById('password-screen');
+const passwordScreenEl = passwordScreen.querySelectorAll('*');
 
-// 1. Readline interface
+const pauseScreen = document.getElementById('pause-screen');
 
-process.stdin.setRawMode(true);
-process.stdin.setEncoding('utf8');
-process.stdin.resume();
+const passwordInstructionsText = document.getElementById('password-instructions-text');
+const passwordButton = document.getElementById('password-button');
 
-// 2. Clean Exit Handling
+const redoScreen = document.getElementById('redo-screen');
+const redoButton = document.getElementById('redo-button');
 
-let isExiting = false;
+const endScreen = document.getElementById('end-screen');
+const retryButton = document.getElementById('retry-button');
+const exitButton = document.getElementById('exit-button');
 
-function cleanupAndExit() {
-    if (isExiting) return;
-    isExiting = true;
+const decodeScreen = document.getElementById('decode-screen');
+const decodeInput = document.getElementById("decode-input");
+const decodeButton = document.getElementById('decode-button');
 
-    console.log('\n[EXIT] Interrupted by user');
-    process.exit(0);
-}
-
-process.on('SIGINT', cleanupAndExit);
-
-// 3. SINGLE-LINE RENDER ENGINE
-function render(text) {
-    process.stdout.write(`${text}`);
-}
-
-async function waitForKey() {
-    return new Promise((resolve) => {
-        function onData(key) {
-
-            if (key === '\u0003') {
-                cleanupAndExit();
-            }
-
-            process.stdin.off('data', onData);
-            resolve(key);
-        }
-
-        process.stdin.on('data', onData);
-    });
-}
-
-async function askYesNo(question) {
-    let input = '';
-    process.stdout.write(`${question} (y/n): `);
-
-    while (true) {
-        const key = await waitForKey();
-
-        if (key === '\r') {
-            // Enter key pressed
-            const trimmedInput = input.toLowerCase().trim();
-
-            if (trimmedInput === 'y' || trimmedInput === 'yes') {
-                console.log('');
-                return 'yes';
-            } else if (trimmedInput === 'n' || trimmedInput === 'no') {
-                console.log('');
-                return 'no';
-            } else {
-                console.log('');
-                console.log('Invalid input. Please type yes or no (y/n).')
-                input = '';
-                process.stdout.write(`${question} (y/n): `);
-                continue;
-            }
-        }
-
-        if (key === '\u007f') {
-            // Backspace
-            if (input.length > 0) {
-                input = input.slice(0, -1);
-                process.stdout.write('\b \b');
-            }
-        } else if (key !== '\u0003') {
-            // Regular character (not Ctrl+C)
-            input += key;
-            process.stdout.write(key);
-        }
-    }
-}
+const timer = document.getElementById('timer');
+const timerScreen = document.getElementById('timer-screen');
 
 let screenTimePassword = [];
-for (let i = 0; i < 4; i++) {
-    screenTimePassword.push(Math.floor(Math.random() * 10));
-}
+let readyToRestart = false;
+let isRetrying = false;
+let isDecodedPassword = false;
 
-async function savePasswordToFile() {
-    try {
-        const passwordString = screenTimePassword.join('');
-        const randomCharCount = Math.floor(Math.random() * 20000) + 50000;
-        
-
-        const makeRandomDigits = () => {
-            
-            const minSkew = Math.ceil(randomCharCount * 0.4);
-            const maxSkew = Math.floor(randomCharCount * 0.8);
-
-            const skewedCharCount = Math.floor(Math.random() * (maxSkew - minSkew + 1)) + minSkew;
-
-            return Array.from({length: skewedCharCount}, () => Math.floor(Math.random() * 10)).join('');
-        }
-
-        const rtfEscape = (str) => {
-            return String(str)
-                .replace(/\\/g, '\\\\')
-                .replace(/{/g, '\\{')
-                .replace(/}/g, '\\}');
-        }
-        
-        const safePassword = rtfEscape(passwordString);
-
-        const fileText = '{\\rtf1\\ansi\\ansicpg1252{\\fonttbl{\\f0\\fnil\\fcharset0 Arial;}}\\f0 ' + `${makeRandomDigits()}{\\b ${safePassword}}${makeRandomDigits()}\\par}`;
-
-        await fs.writeFile("screenTimePassword.rtf", fileText, 'utf8');
-        console.log("Password saved to external file");
-    } catch(err) {
-        console.error("Error saving file:", err);
+function generatePassword() {
+    screenTimePassword = [];
+    for (let i = 0; i < 4; i++) {
+        screenTimePassword.push(Math.floor(Math.random() * 10));
     }
 }
 
-async function runSimulationOnce(screenTimePassword) {
+function pseudoRNG(seed) {
+    return function() {
+        let p = (seed += 0x87A3FE52)
+        p = Math.imul(p ^ (p >>> 13), p | 1);
+        p ^= p + Math.imul(p ^ (p >>> 3), p | 85);
+        return ((p ^ (p >>> 10)) >>> 0) / 4294967296;
+    };
+}
 
-    // 1. See secret password
+function decodePasscode(storedOutput) {
+    const storedOutputArr = storedOutput.split('\n').map(Number);
+
+    for (let seed = 0; seed <= 9999; seed++) {
+        const gen = pseudoRNG(seed);
+        const candidate = Array.from({ length: storedOutputArr.length }, () => gen());
+        if (candidate.every((val, i) => val === storedOutputArr[i])) {
+            return seed;
+        }
+    }
+
+    return null;
+}
+
+
+function* runProgram(password) {
     let inputField = [];
 
-    // 2. Direct the User
-    function directUser(action) {
-        process.stdout.clearLine(0);
-        process.stdout.cursorTo(0);
-        process.stdout.write(`${action}`);
-    }
-
-    // 3. Get iteration barrier with skew
     function getIterationBarrier(j) {
         let minBarrier = 3;
         let maxBarrier = 15;
@@ -145,10 +73,7 @@ async function runSimulationOnce(screenTimePassword) {
         return Math.floor(skewedRand * (maxBarrier - minBarrier + 1)) + minBarrier;
     }
 
-    directUser(`Secret password: ${screenTimePassword.join(' ')}`);
-
-    // 4. For loop
-    for (let i = 0; i < 3; i++){
+    for (let i = 0; i < 3; i++) {
 
         let iterationBarrier = getIterationBarrier(i);
         let safety = 0;
@@ -159,7 +84,7 @@ async function runSimulationOnce(screenTimePassword) {
             cycle++;
 
             if (safety > 1000) {
-                console.log("Safety cap hit at digit", i + 1);
+                console.error("Safety cap hit at digit", i + 1);
                 return;
             }
 
@@ -167,86 +92,250 @@ async function runSimulationOnce(screenTimePassword) {
                 if (inputField.length === i + 1) {
                     if (inputField[i] !== screenTimePassword[i]) {
                         inputField.pop();
-                        directUser("Press delete");
-                        await waitForKey();
-
-                        inputField.push(screenTimePassword[i]);
-                        directUser(`Press ${screenTimePassword[i]}`);
-                        await waitForKey();
+                        yield "Press delete";
+                        inputField.push(password[i]);
+                        yield `Press ${password[i]}`;
                     }
-                }
-                else if (inputField.length < i + 1) {
-                    inputField.push(screenTimePassword[i]);
-                    directUser(`Press ${screenTimePassword[i]}`);
-                    await waitForKey();
-                } 
-                else {
+                } else if (inputField.length < i + 1) {
+                    inputField.push(password[i]);
+                    yield `Press ${password[i]}`;
+                } else {
                     while (inputField.length > i) {
                         inputField.pop();
-                        directUser("Press delete");
-                        await waitForKey();
+                        yield "Press delete";
                     }
-                    inputField.push(screenTimePassword[i]);
-                    directUser(`Press ${screenTimePassword[i]}`);
-                    await waitForKey();
+                    inputField.push(password[i]);
+                    yield `Press ${password[i]}`;
                 }
 
-                break;
-            } 
+                break
+            }
             else {
-                let addProbability = Math.max(0.1, 1.0 - (inputField.length / 4) * 0.7);
-                let addOrDelete = Math.random() < addProbability ? "add" : "delete";
+                let addProbabilty = Math.max(0.1, 1.0 - (inputField.length / 4) * 0.7);
+                let addOrDelete = Math.random() < addProbabilty ? "add" : "delete";
                 if (addOrDelete === "add" && inputField.length < 3) {
                     let randomDigit = Math.floor(Math.random() * 10);
                     inputField.push(randomDigit);
-                    directUser(`Press ${randomDigit}`);
-                    await waitForKey();
-
+                    yield `Press ${randomDigit}`;
                 } else if (addOrDelete === "delete" && inputField.length > i) {
                     inputField.pop();
-                    directUser(`Press delete`);
-                    await waitForKey();
-
+                    yield `Press delete`;
                 } else {
                     cycle--
                 }
             }
-        }   
-    }
-
-    // 5. Final result
-    inputField.push(screenTimePassword[3]);
-    directUser(`Press ${screenTimePassword[3]}`);
-    await waitForKey();
-
-    // 6. Matching Passwords
-    const passwordsMatch = inputField.length === screenTimePassword.length && 
-    inputField.every((val, index) => val === screenTimePassword[index]);
-    
-    console.log(`\nDone! Password gen was ${passwordsMatch ? "successful" : "unsuccessful. Please exit and redo the process"}\n`);
-}
-
-// 7. Master loop with confirmation
-
-async function main() {
-    
-    await savePasswordToFile();
-
-    let keepRunning = true;
-
-    while (keepRunning) {
-        await runSimulationOnce(screenTimePassword);
-
-        const runAgain = await askYesNo('Ready to run again?');
-
-        if (runAgain === 'no') {
-            keepRunning = false;
-            render("\nGoodbye\n");
         }
     }
 
-    process.exit(0);
+    inputField.push(screenTimePassword[3]);
+    console.log(
+        inputField.length === password.length && inputField.every((val, index) => val === screenTimePassword[index])
+    );
+
+    readyToRestart = !readyToRestart;
+
+    yield `Press ${screenTimePassword[3]}`;
 }
 
-// 8. Run Simulation
-main();
+function savePasswordToFile(filename) {
+
+    const passwordSeed = Number(screenTimePassword.join(''));
+
+    const gen = pseudoRNG(passwordSeed);
+    const genArr = Array.from({ length: 30 }, () => gen());
+
+    const blob = new Blob([genArr.join('\n')], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function directUser(action) {
+    passwordInstructionsText.textContent = action;
+
+    passwordInstructionsText.classList.remove('flash');
+    void passwordInstructionsText.offsetWidth;
+    passwordInstructionsText.classList.add('flash');
+
+    passwordButton.disabled = true;
+    passwordInstructionsText.addEventListener('animationend', () => {
+        passwordButton.disabled = false;
+    }, { once: true });
+}
+
+let generator = null;
+
+async function start() {
+
+    if (!isDecodedPassword) {
+        generatePassword();
+        alert("A decoding key for your Screentime password will be saved to your downloads folder in a .txt file. DO NOT DELETE THIS FILE. Otherwise, you will have to do forget your password on iOS and generate a new one.");
+        savePasswordToFile('screentime_password_decoding_key.txt');
+
+        startScreen.style.display = "none"
+        passwordScreen.style.display = "flex";
+        document.body.style.backgroundColor = "var(--jet-black)";
+    } else {
+        screenTimePassword = [];
+        const output = decodeInput.value;
+        const text = decodePasscode(output);
+
+        if (!text) {
+            alert("Invalid decoder key. Please try again.")
+            return;
+        } else {
+            screenTimePassword = text.toString().split('');
+            decodeScreen.style.display = "none";
+            alert("Your password has been succesfully decoded. A 5-minute timer will commence before you can re-enter the password.");
+        }
+
+        timerScreen.style.display = "flex";
+
+        await startCountdown(300, (remaining) => {
+            timer.innerText = formatTime(remaining);
+        });
+
+        transitionText(timerScreen, passwordScreen, () => {
+            document.body.style.backgroundColor = "var(--jet-black)";
+        });
+    }
+
+    generator = runProgram(screenTimePassword);
+    advance();
+}
+
+function pause() {
+    transitionText(passwordScreen, pauseScreen);
+    setTimeout(() => transitionText(pauseScreen, redoScreen), 5000);
+}
+
+function restart() {
+    if (isRetrying) {
+        transitionText(endScreen, passwordScreen);
+    } else {
+        transitionText(redoScreen, passwordScreen);
+    }
+
+    generator = runProgram(screenTimePassword);
+    advance();
+}
+
+function reset () {
+    screenTimePassword = [];
+    readyToRestart = false;
+    isRetrying = false;
+    endScreen.style.display = "none";
+    startScreen.style.display = "flex";
+    document.body.style.backgroundColor = "var(--teal)"
+}
+
+function end() {
+    passwordButton.disabled = true;
+
+    passwordInstructionsText.classList.remove('flash');
+
+    transitionText(passwordScreen, endScreen);
+}
+
+function swapDisplays(elOne, elTwo) {
+        
+        elOne.style.display = 'none';
+        elTwo.style.display = 'flex';
+        
+        fadeIn(elTwo);
+}
+
+function advance() {
+    const result = generator.next();
+    if (result.done && !readyToRestart || result.done && isDecodedPassword) {
+        end();
+        return;
+    } else if (result.done && readyToRestart) {
+        pause();
+        return;
+    }
+
+    directUser(result.value);
+}
+
+function fadeIn(el) {
+    el.classList.remove('flash', 'fade-in', 'fade-out');
+    void el.offsetWidth;
+    el.classList.add('fade-in');
+}
+
+function fadeOut(el) {
+    el.classList.remove('flash', 'fade-in', 'fade-out');
+    void el.offsetWidth;
+    el.classList.add('fade-out');
+}
+
+function transitionText(elOne, elTwo, onStart) {
+    fadeOut(elOne);
+
+    elOne.addEventListener('animationend', function onFadeOut(event) {
+        if (event.animationName !== 'fade-out') return;
+        if (onStart) onStart();
+        swapDisplays(elOne, elTwo);
+        elOne.removeEventListener('animationend', onFadeOut);
+    });
+}
+
+function startCountdown(seconds, onTick) {
+
+    return new Promise((resolve) => {
+        const endTime = Date.now() + seconds * 1000;
+
+        function tick() {
+            const remainingTime = Math.round((endTime - Date.now()) / 1000);
+
+            if (remainingTime <= 0) {
+                onTick(0);
+                resolve();
+                return;
+            }
+
+            onTick(remainingTime);
+            setTimeout(tick, 1000);
+        }   
+
+        tick();
+    });
+}
+
+function formatTime(totalSeconds) {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    const displayedMinutes = String(minutes).padStart(2, '0');
+    const displayedSeconds = String(seconds).padStart(2, '0');
+
+    return `${displayedMinutes}:${displayedSeconds}`;
+}
+
+startButton.addEventListener('click', start);
+
+passwordButton.addEventListener('click', advance);
+
+redoButton.addEventListener('click', restart);
+
+decodeButton.addEventListener('click', () => {
+    isDecodedPassword = true;
+    start();
+})
+
+decodeStartButton.addEventListener('click', () => {
+    startScreen.style.display = "none";
+    decodeScreen.style.display = "flex";
+})
+
+retryButton.addEventListener('click', () => {
+    isRetrying = true;
+    restart();
+});
+
+exitButton.addEventListener('click', reset);

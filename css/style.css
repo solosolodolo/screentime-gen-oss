@@ -1,0 +1,137 @@
+:root {
+    /* Base colors */
+    --jet-black: #022b3a;
+    --teal: #1f7a8c;
+    --pale-sky: #BFDBF7;
+
+    /* Secondary colors */
+    --lavender: #e1e5f2;
+    --white: #ffffff;
+}
+
+body {
+    background-color: var(--teal);
+    transition: background-color 1s ease;
+}
+
+h1 {
+    font-size: 4rem;
+}
+
+h2 {
+    font-size: 3rem;
+    padding: 2.5em 0;
+}
+
+h3 {
+    font-size: 1.5rem;
+}
+
+button {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    border: none;
+    padding: 0.4em 1em;
+    font-size: 1.5rem;
+    border-radius: 6px;
+    background-color: var(--lavender);
+    color: var(--jet-black);
+}
+
+button:hover {
+    cursor: pointer;
+}
+
+button:focus-visible {
+    outline: 2px solid var(--alice-blue);
+    outline-offset: 2px;
+}
+
+/* Start Screen */
+
+.main-div {
+    padding: 2em 1em;
+    width: 50%;
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.simple-div {
+    margin: 17% auto 0;
+    color: var(--white);
+}
+
+/* Password screen */
+
+#password-screen {
+    margin: 7% auto;
+    color: var(--lavender);
+}
+
+#password-screen, #redo-screen, #pause-screen, #decode-screen, #end-screen, #timer-screen {
+    display: none;
+    transition: opacity 2s ease;
+}
+
+#password-instructions-text {
+    transition: opacity 0.15s ease;
+}
+
+#timer-screen {
+    margin: 15% auto;
+}
+
+.flash {
+    animation: flash-text 0.3s ease;
+}
+
+.fade-in {
+    animation: fade-in 1s ease;
+}
+
+.fade-out {
+    animation: fade-out 1s ease;
+}
+
+.button-wrapper {
+    display: flex;
+    justify-content: space-between;
+    width: 30%;
+    gap: 5%;
+}
+
+.button-wrapper button {
+    flex: 0 0 auto;
+    min-width: 10px;
+}
+
+#decode-screen {
+    margin: 12% auto;
+    gap: 1.3em;
+}
+
+#decode-input {
+    height: 30vh;
+    border-radius: 10px;
+    padding: 0.5em;
+    background-color: var(--lavender);
+}
+
+@keyframes flash-text {
+    0% { opacity: 0; transform: translateY(-4px); }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+    0% { opacity: 0; transform: translateY(-4px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-out {
+    0% { opacity: 1; transform: translateY(0);}
+    100% { opacity: 0; transform: translateY(-4px);}
+}

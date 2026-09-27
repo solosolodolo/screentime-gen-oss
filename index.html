@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screentime GenOSS</title>
+    <link rel="stylesheet" href="css/normalize.css"/>
+    <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+    <div id="start-screen" class="main-div simple-div">
+        <h1 id="start-title">Screentime GenOSS</h1>
+        <div class="button-wrapper">
+            <button id="start-button">Start</button>
+            <button id="decode-start-button">Decode</button>
+        </div>
+    </div>
+    <div id="decode-screen" class="main-div">
+        <textarea id="decode-input" rows="40" cols="30" placeholder="Paste file contents here"></textarea>
+        <button id="decode-button">Decode</button>
+    </div>
+    <div id="timer-screen" class="main-div simple-div">
+        <h1 id="timer"></h1>
+    </div>
+    <div id="password-screen" class="main-div">
+        <div id="password-instructions">
+            <h2 id="password-instructions-text">Press 5</h2>
+        </div>
+        <button id="password-button">Next</button>
+    </div>
+    <div id="pause-screen" class="main-div simple-div">
+        <h1 id="pause-title">Now, it's time to verify your passcode.</h1>
+    </div>
+    <div id="redo-screen" class="main-div simple-div">
+        <h1>Ready to go again?</h1>
+        <button id="redo-button">Start</button>
+    </div>
+    <div id="end-screen" class="main-div simple-div">
+        <h1>Your Screentime password has been set.</h1>
+        <p>If you need to retype in the same password, press retry. Otherwise, press exit.</p>
+        <div class="button-wrapper">
+            <button id="retry-button">Retry</button>
+            <button id="exit-button">Exit</button>
+        </div>
+    </div>
+    <script src="display.js"></script>
+</body>
+</html>
